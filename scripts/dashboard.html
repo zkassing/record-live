@@ -1,0 +1,762 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>直播录制 · Dashboard</title>
+<style>
+  :root {
+    --bg: #f5f5f7;
+    --card: #ffffff;
+    --text: #1d1d1f;
+    --muted: #6e6e73;
+    --border: #e5e5ea;
+    --accent: #ff2d55;
+    --accent-soft: #ffe5ec;
+    --green: #30d158;
+    --orange: #ff9f0a;
+    --blue: #0a84ff;
+    --gray: #8e8e93;
+    --shadow: 0 1px 3px rgba(0,0,0,0.04), 0 4px 16px rgba(0,0,0,0.06);
+  }
+  @media (prefers-color-scheme: dark) {
+    :root {
+      --bg: #1c1c1e;
+      --card: #2c2c2e;
+      --text: #f2f2f7;
+      --muted: #98989d;
+      --border: #3a3a3c;
+      --accent: #ff375f;
+      --accent-soft: #4a1f2a;
+      --shadow: 0 1px 3px rgba(0,0,0,0.3), 0 4px 16px rgba(0,0,0,0.4);
+    }
+  }
+  * { box-sizing: border-box; }
+  body {
+    margin: 0;
+    font-family: -apple-system, BlinkMacSystemFont, "PingFang SC", "Helvetica Neue", sans-serif;
+    background: var(--bg);
+    color: var(--text);
+    font-size: 14px;
+    line-height: 1.5;
+  }
+  .container { max-width: 960px; margin: 0 auto; padding: 24px 16px 80px; }
+  header { display: flex; align-items: center; justify-content: space-between; margin-bottom: 24px; }
+  h1 { font-size: 24px; font-weight: 600; margin: 0; }
+  .conn-status { font-size: 12px; color: var(--muted); display: flex; align-items: center; gap: 6px; }
+  .conn-dot { width: 8px; height: 8px; border-radius: 50%; background: var(--gray); }
+  .conn-status.live .conn-dot { background: var(--green); }
+
+  .output-dir-bar {
+    background: var(--card);
+    border-radius: 10px;
+    padding: 8px 14px;
+    margin-bottom: 12px;
+    box-shadow: var(--shadow);
+    font-size: 12px;
+    color: var(--muted);
+    word-break: break-all;
+    font-family: -apple-system, "SF Mono", Menlo, monospace;
+  }
+  .output-dir-bar #output-dir-text { color: var(--text); }
+
+  .tabs {
+    display: flex;
+    gap: 4px;
+    margin-bottom: 16px;
+    background: var(--card);
+    padding: 4px;
+    border-radius: 10px;
+    box-shadow: var(--shadow);
+  }
+  .tab {
+    flex: 1;
+    padding: 10px 16px;
+    border: none;
+    background: transparent;
+    color: var(--muted);
+    font-size: 14px;
+    font-weight: 500;
+    border-radius: 8px;
+    cursor: pointer;
+    transition: all 0.15s;
+  }
+  .tab.active { background: var(--bg); color: var(--text); }
+  .tab:hover:not(.active) { color: var(--text); }
+  .tab-panel { display: none; }
+  .tab-panel.active { display: block; }
+
+  .submit-card {
+    background: var(--card);
+    border-radius: 12px;
+    padding: 20px;
+    box-shadow: var(--shadow);
+    margin-bottom: 24px;
+  }
+  .submit-card h2 { font-size: 16px; font-weight: 600; margin: 0 0 4px; }
+  .submit-card .hint { font-size: 12px; color: var(--muted); margin: 0 0 12px; }
+  .submit-row { display: flex; gap: 8px; flex-wrap: wrap; }
+  .submit-row input[type="text"] {
+    flex: 1;
+    min-width: 240px;
+    padding: 10px 14px;
+    border: 1px solid var(--border);
+    border-radius: 8px;
+    background: var(--bg);
+    color: var(--text);
+    font-size: 14px;
+  }
+  .submit-row select {
+    padding: 10px 14px;
+    border: 1px solid var(--border);
+    border-radius: 8px;
+    background: var(--bg);
+    color: var(--text);
+    font-size: 14px;
+  }
+  .btn {
+    padding: 10px 18px;
+    border: none;
+    border-radius: 8px;
+    background: var(--accent);
+    color: white;
+    font-size: 14px;
+    font-weight: 500;
+    cursor: pointer;
+    transition: opacity 0.15s;
+  }
+  .btn:hover { opacity: 0.9; }
+  .btn:disabled { opacity: 0.4; cursor: not-allowed; }
+  .btn-secondary {
+    background: transparent;
+    color: var(--text);
+    border: 1px solid var(--border);
+  }
+  .btn-danger { background: var(--accent); }
+  .btn-small { padding: 6px 12px; font-size: 12px; }
+
+  .empty {
+    text-align: center;
+    padding: 60px 20px;
+    color: var(--muted);
+  }
+  .empty-icon { font-size: 40px; opacity: 0.3; margin-bottom: 8px; }
+  .empty .icon-lg { display: block; margin: 0 auto 8px; }
+
+  .task, .watcher {
+    background: var(--card);
+    border-radius: 12px;
+    padding: 16px 20px;
+    box-shadow: var(--shadow);
+    margin-bottom: 12px;
+  }
+  .task-head, .watcher-head {
+    display: flex; align-items: center; justify-content: space-between;
+    gap: 12px; margin-bottom: 8px;
+  }
+  .task-title-wrap { flex: 1; min-width: 0; }
+  .task-title { font-size: 15px; font-weight: 600; margin: 0; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+  .task-sub { font-size: 12px; color: var(--muted); margin-top: 2px; }
+  .badge {
+    display: inline-block;
+    padding: 2px 10px;
+    border-radius: 10px;
+    font-size: 11px;
+    font-weight: 500;
+    background: var(--accent-soft);
+    color: var(--accent);
+    white-space: nowrap;
+  }
+  .badge.recording, .badge.live_recording { background: var(--accent-soft); color: var(--accent); }
+  .badge.recording::before, .badge.live_recording::before {
+    content: "●";
+    margin-right: 4px;
+    animation: blink 1.4s infinite;
+  }
+  @keyframes blink { 50% { opacity: 0.3; } }
+  .badge.starting, .badge.converting, .badge.checking { background: rgba(255,159,10,0.15); color: var(--orange); }
+  .badge.done { background: rgba(48,209,88,0.15); color: var(--green); }
+  .badge.error, .badge.stopped { background: rgba(142,142,147,0.15); color: var(--gray); }
+  .badge.idle { background: rgba(10,132,255,0.15); color: var(--blue); }
+
+  /* 平台徽章：和状态徽章并列 */
+  .badge.platform-douyin { background: rgba(0,0,0,0.08); color: var(--text); }
+  .badge.platform-xiaohongshu { background: rgba(255,45,85,0.12); color: #ff2d55; }
+  @media (prefers-color-scheme: dark) {
+    .badge.platform-douyin { background: rgba(255,255,255,0.12); color: var(--text); }
+    .badge.platform-xiaohongshu { background: rgba(255,55,95,0.22); color: #ff5f7e; }
+  }
+  .head-badges { display: flex; gap: 6px; flex-shrink: 0; align-items: center; }
+
+  .progress-grid {
+    display: grid;
+    grid-template-columns: repeat(auto-fit, minmax(110px, 1fr));
+    gap: 8px;
+    margin: 10px 0;
+    padding: 10px;
+    background: var(--bg);
+    border-radius: 8px;
+  }
+  .progress-grid .label { font-size: 11px; color: var(--muted); }
+  .progress-grid .value { font-size: 14px; font-weight: 500; font-variant-numeric: tabular-nums; }
+
+  .task-actions { display: flex; gap: 8px; flex-wrap: wrap; margin-top: 8px; }
+  .meta-row { font-size: 12px; color: var(--muted); margin-top: 8px; word-break: break-all; }
+  .meta-row .file { font-family: -apple-system, "SF Mono", Menlo, monospace; }
+
+  .bookmarks { margin-top: 10px; padding-top: 10px; border-top: 1px solid var(--border); }
+  .bookmarks-title { font-size: 12px; color: var(--muted); margin-bottom: 6px; }
+  .bookmark-item {
+    display: flex;
+    gap: 8px;
+    padding: 6px 0;
+    font-size: 13px;
+    border-bottom: 1px dashed var(--border);
+  }
+  .bookmark-item:last-child { border-bottom: none; }
+  .bookmark-time { color: var(--accent); font-variant-numeric: tabular-nums; min-width: 70px; flex-shrink: 0; }
+  .bookmark-note { color: var(--text); }
+
+  .watcher-head { gap: 12px; }
+  .watcher-avatar {
+    width: 40px; height: 40px; border-radius: 50%;
+    background: var(--bg) center/cover no-repeat;
+    flex-shrink: 0;
+    display: flex; align-items: center; justify-content: center;
+    color: var(--muted);
+  }
+  .watcher-avatar .icon { width: 22px; height: 22px; }
+  .watcher-stats {
+    font-size: 12px; color: var(--muted);
+    margin-top: 6px;
+    display: flex; gap: 14px; flex-wrap: wrap;
+  }
+  .watcher-stats span { font-variant-numeric: tabular-nums; }
+
+  .toast {
+    position: fixed;
+    bottom: 24px;
+    left: 50%;
+    transform: translateX(-50%) translateY(20px);
+    background: var(--text);
+    color: var(--bg);
+    padding: 10px 18px;
+    border-radius: 8px;
+    font-size: 13px;
+    opacity: 0;
+    transition: all 0.25s;
+    pointer-events: none;
+    box-shadow: var(--shadow);
+  }
+  .toast.show { opacity: 1; transform: translateX(-50%) translateY(0); }
+
+  /* SVG 图标：跟随父元素 color，垂直居中对齐文字 */
+  .icon {
+    width: 1em; height: 1em;
+    stroke: currentColor;
+    stroke-width: 2;
+    stroke-linecap: round;
+    stroke-linejoin: round;
+    fill: none;
+    vertical-align: -0.15em;
+    flex-shrink: 0;
+  }
+  .icon-lg { width: 40px; height: 40px; stroke-width: 1.5; opacity: 0.35; }
+  /* 按钮里的图标和文字间距 */
+  .btn .icon, .btn-small .icon { margin-right: 4px; }
+</style>
+</head>
+<body>
+<!-- SVG sprite：所有图标在这里一次性定义，<use href="#icon-xxx"/> 引用 -->
+<svg width="0" height="0" style="position:absolute" aria-hidden="true">
+  <defs>
+    <symbol id="icon-tv" viewBox="0 0 24 24"><rect x="2" y="7" width="20" height="15" rx="2"/><polyline points="17 2 12 7 7 2"/></symbol>
+    <symbol id="icon-folder" viewBox="0 0 24 24"><path d="M22 19a2 2 0 0 1-2 2H4a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h5l2 3h9a2 2 0 0 1 2 2z"/></symbol>
+    <symbol id="icon-inbox" viewBox="0 0 24 24"><polyline points="22 12 16 12 14 15 10 15 8 12 2 12"/><path d="M5.45 5.11 2 12v6a2 2 0 0 0 2 2h16a2 2 0 0 0 2-2v-6l-3.45-6.89A2 2 0 0 0 16.76 4H7.24a2 2 0 0 0-1.79 1.11z"/></symbol>
+    <symbol id="icon-eye" viewBox="0 0 24 24"><path d="M2 12s3-7 10-7 10 7 10 7-3 7-10 7-10-7-10-7z"/><circle cx="12" cy="12" r="3"/></symbol>
+    <symbol id="icon-pin" viewBox="0 0 24 24"><line x1="12" y1="17" x2="12" y2="22"/><path d="M5 17h14v-1.76a2 2 0 0 0-1.11-1.79l-1.78-.9A2 2 0 0 1 15 10.76V6h1a2 2 0 0 0 0-4H8a2 2 0 0 0 0 4h1v4.76a2 2 0 0 1-1.11 1.79l-1.78.9A2 2 0 0 0 5 15.24z"/></symbol>
+    <symbol id="icon-stop" viewBox="0 0 24 24"><rect x="5" y="5" width="14" height="14" rx="1"/></symbol>
+    <symbol id="icon-refresh" viewBox="0 0 24 24"><polyline points="23 4 23 10 17 10"/><polyline points="1 20 1 14 7 14"/><path d="M3.51 9a9 9 0 0 1 14.85-3.36L23 10M1 14l4.64 4.36A9 9 0 0 0 20.49 15"/></symbol>
+    <symbol id="icon-trash" viewBox="0 0 24 24"><polyline points="3 6 5 6 21 6"/><path d="M19 6v14a2 2 0 0 1-2 2H7a2 2 0 0 1-2-2V6m3 0V4a2 2 0 0 1 2-2h4a2 2 0 0 1 2 2v2"/><line x1="10" y1="11" x2="10" y2="17"/><line x1="14" y1="11" x2="14" y2="17"/></symbol>
+    <symbol id="icon-user" viewBox="0 0 24 24"><path d="M20 21v-2a4 4 0 0 0-4-4H8a4 4 0 0 0-4 4v2"/><circle cx="12" cy="7" r="4"/></symbol>
+    <symbol id="icon-play" viewBox="0 0 24 24"><polygon points="5 3 19 12 5 21 5 3"/></symbol>
+    <symbol id="icon-alert" viewBox="0 0 24 24"><path d="M10.29 3.86 1.82 18a2 2 0 0 0 1.71 3h16.94a2 2 0 0 0 1.71-3L13.71 3.86a2 2 0 0 0-3.42 0z"/><line x1="12" y1="9" x2="12" y2="13"/><line x1="12" y1="17" x2="12.01" y2="17"/></symbol>
+  </defs>
+</svg>
+<div class="container">
+  <header>
+    <h1><svg class="icon" style="width:1.1em;height:1.1em;margin-right:6px;vertical-align:-0.18em"><use href="#icon-tv"/></svg>直播录制</h1>
+    <div class="conn-status" id="conn">
+      <span class="conn-dot"></span>
+      <span id="conn-text">连接中…</span>
+    </div>
+  </header>
+
+  <div class="output-dir-bar" id="output-dir-bar" title="server 启动时刻的工作目录">
+    <svg class="icon" style="margin-right:4px"><use href="#icon-folder"/></svg><span id="output-dir-text">…</span>
+  </div>
+
+  <div class="tabs" role="tablist">
+    <button class="tab active" data-tab="record" role="tab">立即录制</button>
+    <button class="tab" data-tab="watch" role="tab">监听开播</button>
+  </div>
+
+  <!-- 立即录制 -->
+  <section class="tab-panel active" id="panel-record">
+    <div class="submit-card">
+      <h2>录制直播间</h2>
+      <p class="hint">支持抖音、小红书。粘贴直播间链接即可，平台自动识别。</p>
+      <form id="record-form" class="submit-row">
+        <select id="record-platform" title="平台（自动识别可不选）">
+          <option value="">平台：自动识别</option>
+        </select>
+        <input id="record-target" type="text" placeholder="直播间链接 / web_rid / xiaohongshu.com 链接" autocomplete="off" required>
+        <select id="record-quality">
+          <option value="">画质：自动（最高）</option>
+          <option>ORIGIN</option>
+          <option>FULL_HD1</option>
+          <option>UHD</option>
+          <option>HD1</option>
+          <option>HD</option>
+          <option>SD1</option>
+          <option>SD</option>
+          <option>SD2</option>
+          <option>LD</option>
+        </select>
+        <button class="btn" id="record-submit-btn" type="submit">开始录制</button>
+      </form>
+    </div>
+
+    <div id="tasks-wrap">
+      <div class="empty" id="tasks-empty">
+        <svg class="icon icon-lg"><use href="#icon-inbox"/></svg>
+        <div>还没有录制任务，从上面提交一个吧</div>
+      </div>
+    </div>
+  </section>
+
+  <!-- 监听开播 -->
+  <section class="tab-panel" id="panel-watch">
+    <div class="submit-card">
+      <h2>监听用户开播</h2>
+      <p class="hint">
+        监听用户主页（<code>https://www.douyin.com/user/MS4wLjABAAAA…</code>）或 sec_user_id；
+        检测到开播会自动开始录制；下播后继续监听下一场。
+        <strong>注：仅抖音支持监听</strong>，小红书需要用「立即录制」tab 给一个正在播的直播间链接。
+      </p>
+      <form id="watch-form" class="submit-row">
+        <select id="watch-platform" title="平台（仅显示支持监听的）">
+          <!-- 由 JS 在拿到 /api/platforms 后填充，仅显示 supports_watcher=true 的 -->
+        </select>
+        <input id="watch-target" type="text" placeholder="https://www.douyin.com/user/MS4wLjABAAAA..." autocomplete="off" required>
+        <select id="watch-interval">
+          <option value="30">检查频率：30 秒（推荐）</option>
+          <option value="10">10 秒（更灵敏）</option>
+          <option value="60">60 秒（保守）</option>
+          <option value="120">120 秒</option>
+        </select>
+        <select id="watch-quality">
+          <option value="">画质：自动</option>
+          <option>ORIGIN</option>
+          <option>FULL_HD1</option>
+          <option>HD</option>
+          <option>SD</option>
+        </select>
+        <button class="btn" id="watch-submit-btn" type="submit">添加监听</button>
+      </form>
+    </div>
+
+    <div id="watchers-wrap">
+      <div class="empty" id="watchers-empty">
+        <svg class="icon icon-lg"><use href="#icon-eye"/></svg>
+        <div>还没有监听任务，从上面添加一个用户</div>
+      </div>
+    </div>
+  </section>
+</div>
+
+<div class="toast" id="toast"></div>
+
+<script>
+const tasksWrap = document.getElementById('tasks-wrap');
+const tasksEmpty = document.getElementById('tasks-empty');
+const watchersWrap = document.getElementById('watchers-wrap');
+const watchersEmpty = document.getElementById('watchers-empty');
+const connEl = document.getElementById('conn');
+const connText = document.getElementById('conn-text');
+const toast = document.getElementById('toast');
+
+const tasks = new Map();
+const watchers = new Map();
+
+function showToast(msg, ms = 2400) {
+  toast.textContent = msg;
+  toast.classList.add('show');
+  clearTimeout(showToast._t);
+  showToast._t = setTimeout(() => toast.classList.remove('show'), ms);
+}
+
+function escape(s) {
+  return (s ?? '').toString().replace(/[&<>"']/g, c => ({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]));
+}
+
+function icon(name, extraClass = '') {
+  return `<svg class="icon ${extraClass}"><use href="#icon-${name}"/></svg>`;
+}
+
+const TASK_LABELS = {
+  starting: '准备中', recording: '录制中', converting: '转换中',
+  done: '已完成', error: '失败', stopped: '已停止',
+};
+const WATCHER_LABELS = {
+  idle: '等待开播', checking: '检查中', live_recording: '正在录制', error: '出错',
+};
+
+function fmtElapsed(sec) {
+  if (!sec || sec < 0) return '00:00:00';
+  const h = Math.floor(sec / 3600).toString().padStart(2, '0');
+  const m = Math.floor((sec % 3600) / 60).toString().padStart(2, '0');
+  const s = Math.floor(sec % 60).toString().padStart(2, '0');
+  return `${h}:${m}:${s}`;
+}
+
+function fmtRelative(ts) {
+  if (!ts) return '-';
+  const sec = Math.floor((Date.now() / 1000) - ts);
+  if (sec < 5) return '刚刚';
+  if (sec < 60) return `${sec}s 前`;
+  if (sec < 3600) return `${Math.floor(sec / 60)}m 前`;
+  return `${Math.floor(sec / 3600)}h 前`;
+}
+
+function renderTask(t) {
+  let card = document.getElementById('task-' + t.id);
+  if (!card) {
+    card = document.createElement('div');
+    card.id = 'task-' + t.id;
+    card.className = 'task';
+    tasksWrap.appendChild(card);
+  }
+  tasksEmpty.style.display = 'none';
+
+  const isActive = t.status === 'recording' || t.status === 'starting';
+  const showStop = isActive;
+  const showBookmark = t.status === 'recording';
+  const titleLine = t.title || (t.target ? `直播间 ${t.target}` : '准备中…');
+  const roomIdShown = t.room_id || t.web_rid;
+  const subLine = [
+    t.nickname ? `主播：${t.nickname}` : '',
+    t.quality ? `画质：${t.quality}` : '',
+    roomIdShown ? `房间：${roomIdShown}` : `输入：${t.target}`,
+  ].filter(Boolean).join(' · ');
+  const finalPath = t.mp4_path || t.output_path;
+  const platformId = t.platform || 'douyin';
+  const platformLabel = t.platform_display_name || (platformId === 'xiaohongshu' ? '小红书' : '抖音');
+
+  card.innerHTML = `
+    <div class="task-head">
+      <div class="task-title-wrap">
+        <div class="task-title">${escape(titleLine)}</div>
+        <div class="task-sub">${escape(subLine)}</div>
+      </div>
+      <div class="head-badges">
+        <span class="badge platform-${escape(platformId)}">${escape(platformLabel)}</span>
+        <span class="badge ${t.status}">${TASK_LABELS[t.status] || t.status}</span>
+      </div>
+    </div>
+    <div class="progress-grid">
+      <div><div class="label">已录时长</div><div class="value">${escape(t.progress?.time || '00:00:00')}</div></div>
+      <div><div class="label">文件大小</div><div class="value">${escape(t.progress?.size || '0KB')}</div></div>
+      <div><div class="label">码率</div><div class="value">${escape(t.progress?.bitrate || '0kbits/s')}</div></div>
+    </div>
+    ${t.error ? `<div class="meta-row" style="color:var(--accent)">${icon('alert')} ${escape(t.error)}</div>` : ''}
+    ${finalPath ? `<div class="meta-row"><span class="file">${escape(finalPath)}</span></div>` : ''}
+    <div class="task-actions">
+      ${showBookmark ? `<button class="btn btn-secondary btn-small" data-action="bookmark" data-id="${t.id}">${icon('pin')}添加书签</button>` : ''}
+      ${showStop ? `<button class="btn btn-danger btn-small" data-action="stop" data-id="${t.id}">${icon('stop')}停止录制</button>` : ''}
+    </div>
+    ${t.bookmarks?.length ? `
+      <div class="bookmarks">
+        <div class="bookmarks-title">${icon('pin')} 书签 (${t.bookmarks.length})</div>
+        ${t.bookmarks.map(b => `
+          <div class="bookmark-item">
+            <span class="bookmark-time">${escape(b.progress_time || fmtElapsed(b.elapsed))}</span>
+            <span class="bookmark-note">${escape(b.note || '(无备注)')}</span>
+          </div>
+        `).join('')}
+      </div>
+    ` : ''}
+  `;
+  reorderTaskCards();
+}
+
+function reorderTaskCards() {
+  const all = [...tasks.values()].sort((a, b) => {
+    const aActive = (a.status === 'recording' || a.status === 'starting' || a.status === 'converting') ? 0 : 1;
+    const bActive = (b.status === 'recording' || b.status === 'starting' || b.status === 'converting') ? 0 : 1;
+    if (aActive !== bActive) return aActive - bActive;
+    return (b.created_at ?? 0) - (a.created_at ?? 0);
+  });
+  for (const t of all) {
+    const card = document.getElementById('task-' + t.id);
+    if (card) tasksWrap.appendChild(card);
+  }
+}
+
+function renderWatcher(w) {
+  let card = document.getElementById('watcher-' + w.id);
+  if (!card) {
+    card = document.createElement('div');
+    card.id = 'watcher-' + w.id;
+    card.className = 'watcher';
+    watchersWrap.appendChild(card);
+  }
+  watchersEmpty.style.display = 'none';
+
+  const avatarStyle = w.avatar
+    ? `background-image: url('${encodeURI(w.avatar)}')`
+    : '';
+  const linkedTask = w.current_task_id ? tasks.get(w.current_task_id) : null;
+  const wPlatformId = w.platform || 'douyin';
+  const wPlatformLabel = w.platform_display_name || (wPlatformId === 'xiaohongshu' ? '小红书' : '抖音');
+  const wUserId = w.user_id || w.sec_user_id || '';
+
+  card.innerHTML = `
+    <div class="watcher-head">
+      <div class="watcher-avatar" style="${avatarStyle}">${w.avatar ? '' : icon('user')}</div>
+      <div class="task-title-wrap">
+        <div class="task-title">${escape(w.nickname || '(待解析)')}</div>
+        <div class="task-sub">user_id: ${escape(wUserId.slice(0, 24))}…</div>
+      </div>
+      <div class="head-badges">
+        <span class="badge platform-${escape(wPlatformId)}">${escape(wPlatformLabel)}</span>
+        <span class="badge ${w.status}">${WATCHER_LABELS[w.status] || w.status}</span>
+      </div>
+    </div>
+    <div class="watcher-stats">
+      <span>检查间隔: ${w.interval}s</span>
+      <span>上次检查: ${fmtRelative(w.last_checked_at)}</span>
+      <span>已捕获: ${w.records_started} 场</span>
+      ${w.quality ? `<span>画质: ${escape(w.quality)}</span>` : ''}
+    </div>
+    ${w.last_error ? `<div class="meta-row" style="color:var(--accent)">${icon('alert')} ${escape(w.last_error)}</div>` : ''}
+    ${linkedTask ? `<div class="meta-row">${icon('play')} 当前正在录制：<a href="#" data-jump-task="${linkedTask.id}">${escape(linkedTask.title || linkedTask.room_id || linkedTask.web_rid || linkedTask.target)}</a></div>` : ''}
+    <div class="task-actions">
+      <button class="btn btn-secondary btn-small" data-action="check-now" data-id="${w.id}">${icon('refresh')}立即检查</button>
+      <button class="btn btn-secondary btn-small" data-action="delete-watcher" data-id="${w.id}">${icon('trash')}删除监听</button>
+    </div>
+  `;
+}
+
+function applySnapshot(snapshot) {
+  // 清空 DOM 和缓存
+  tasks.clear();
+  watchers.clear();
+  tasksWrap.querySelectorAll('.task').forEach(n => n.remove());
+  watchersWrap.querySelectorAll('.watcher').forEach(n => n.remove());
+
+  for (const t of snapshot.tasks || []) { tasks.set(t.id, t); renderTask(t); }
+  for (const w of snapshot.watchers || []) { watchers.set(w.id, w); renderWatcher(w); }
+
+  tasksEmpty.style.display = (snapshot.tasks || []).length ? 'none' : '';
+  watchersEmpty.style.display = (snapshot.watchers || []).length ? 'none' : '';
+}
+
+function applyEvent(evt) {
+  switch (evt.type) {
+    case 'snapshot': applySnapshot(evt); break;
+    case 'task_created':
+    case 'task_updated':
+      tasks.set(evt.task.id, evt.task);
+      renderTask(evt.task);
+      // 任务变化可能影响 watcher 卡片里的 linkedTask 显示
+      for (const w of watchers.values()) if (w.current_task_id === evt.task.id) renderWatcher(w);
+      break;
+    case 'progress': {
+      const t = tasks.get(evt.task_id);
+      if (t) { t.progress = evt.progress; renderTask(t); }
+      break;
+    }
+    case 'bookmark_added': {
+      const t = tasks.get(evt.task_id);
+      if (t) { t.bookmarks = (t.bookmarks || []).concat([evt.bookmark]); renderTask(t); }
+      break;
+    }
+    case 'watcher_created':
+    case 'watcher_updated':
+      watchers.set(evt.watcher.id, evt.watcher);
+      renderWatcher(evt.watcher);
+      break;
+    case 'watcher_deleted': {
+      watchers.delete(evt.watcher_id);
+      const card = document.getElementById('watcher-' + evt.watcher_id);
+      if (card) card.remove();
+      if (watchersWrap.querySelectorAll('.watcher').length === 0) watchersEmpty.style.display = '';
+      break;
+    }
+  }
+}
+
+let es;
+function connectSSE() {
+  if (es) try { es.close(); } catch {}
+  es = new EventSource('/api/events');
+  es.onopen = () => { connEl.classList.add('live'); connText.textContent = '已连接'; };
+  es.onerror = () => {
+    connEl.classList.remove('live');
+    connText.textContent = '已断开，重连中…';
+    setTimeout(connectSSE, 2000);
+  };
+  es.onmessage = (ev) => {
+    try { applyEvent(JSON.parse(ev.data)); } catch (e) { console.warn(e); }
+  };
+}
+connectSSE();
+
+// 拉一下默认输出目录显示在顶部
+fetch('/api/config')
+  .then(r => r.json())
+  .then(cfg => {
+    document.getElementById('output-dir-text').textContent = cfg.default_output_dir || '(unknown)';
+  })
+  .catch(() => {});
+
+// 拉平台列表填充选择器
+fetch('/api/platforms')
+  .then(r => r.json())
+  .then(data => {
+    const platforms = data.platforms || [];
+    const recSel = document.getElementById('record-platform');
+    const watchSel = document.getElementById('watch-platform');
+    // 录制：列出所有平台
+    for (const p of platforms) {
+      const opt = document.createElement('option');
+      opt.value = p.id;
+      opt.textContent = p.display_name;
+      recSel.appendChild(opt);
+    }
+    // 监听：仅列出 supports_watcher 的平台
+    const watchable = platforms.filter(p => p.supports_watcher);
+    if (watchable.length === 0) {
+      const opt = document.createElement('option');
+      opt.value = '';
+      opt.textContent = '（暂无支持监听的平台）';
+      watchSel.appendChild(opt);
+      document.getElementById('watch-submit-btn').disabled = true;
+    } else {
+      for (const p of watchable) {
+        const opt = document.createElement('option');
+        opt.value = p.id;
+        opt.textContent = p.display_name;
+        watchSel.appendChild(opt);
+      }
+    }
+  })
+  .catch(() => {});
+
+// Tab 切换
+document.querySelectorAll('.tab').forEach(t => {
+  t.addEventListener('click', () => {
+    document.querySelectorAll('.tab').forEach(x => x.classList.toggle('active', x === t));
+    document.querySelectorAll('.tab-panel').forEach(p => {
+      p.classList.toggle('active', p.id === 'panel-' + t.dataset.tab);
+    });
+  });
+});
+
+// 录制表单
+document.getElementById('record-form').addEventListener('submit', async (e) => {
+  e.preventDefault();
+  const target = document.getElementById('record-target').value.trim();
+  const quality = document.getElementById('record-quality').value || null;
+  const platform = document.getElementById('record-platform').value || null;
+  if (!target) return;
+  const btn = document.getElementById('record-submit-btn');
+  btn.disabled = true;
+  try {
+    const r = await fetch('/api/tasks', {
+      method: 'POST', headers: {'Content-Type': 'application/json'},
+      body: JSON.stringify({target, platform, quality}),
+    });
+    const data = await r.json();
+    if (!r.ok) showToast('提交失败：' + (data.error || r.status));
+    else { document.getElementById('record-target').value = ''; showToast('已提交录制任务'); }
+  } catch (err) { showToast('网络错误：' + err.message); }
+  finally { btn.disabled = false; }
+});
+
+// 监听表单
+document.getElementById('watch-form').addEventListener('submit', async (e) => {
+  e.preventDefault();
+  const target = document.getElementById('watch-target').value.trim();
+  const interval = parseInt(document.getElementById('watch-interval').value) || 30;
+  const quality = document.getElementById('watch-quality').value || null;
+  const platform = document.getElementById('watch-platform').value || null;
+  if (!target) return;
+  const btn = document.getElementById('watch-submit-btn');
+  btn.disabled = true;
+  try {
+    const r = await fetch('/api/watchers', {
+      method: 'POST', headers: {'Content-Type': 'application/json'},
+      body: JSON.stringify({target, platform, interval, quality}),
+    });
+    const data = await r.json();
+    if (!r.ok) showToast('添加失败：' + (data.error || r.status));
+    else { document.getElementById('watch-target').value = ''; showToast('已开始监听'); }
+  } catch (err) { showToast('网络错误：' + err.message); }
+  finally { btn.disabled = false; }
+});
+
+// 操作委托：录制 + 监听共用
+document.body.addEventListener('click', async (e) => {
+  // 点 watcher 里的链接跳转到对应 task 卡片
+  const jump = e.target.closest('a[data-jump-task]');
+  if (jump) {
+    e.preventDefault();
+    document.querySelector('.tab[data-tab="record"]').click();
+    const card = document.getElementById('task-' + jump.dataset.jumpTask);
+    if (card) {
+      card.scrollIntoView({behavior: 'smooth', block: 'center'});
+      card.style.transition = 'box-shadow 0.4s';
+      card.style.boxShadow = '0 0 0 3px var(--accent)';
+      setTimeout(() => { card.style.boxShadow = ''; }, 1400);
+    }
+    return;
+  }
+
+  const btn = e.target.closest('button[data-action]');
+  if (!btn) return;
+  const id = btn.dataset.id;
+  const action = btn.dataset.action;
+  if (action === 'stop') {
+    if (!confirm('确认停止录制？已录制内容会自动转 MP4。')) return;
+    btn.disabled = true;
+    const r = await fetch(`/api/tasks/${id}/stop`, {method: 'POST'});
+    showToast(r.ok ? '正在停止…' : '停止失败');
+  } else if (action === 'bookmark') {
+    const note = prompt('给这个时刻起个名字（如：开始带货 / 进广告）：', '');
+    if (note === null) return;
+    const r = await fetch(`/api/tasks/${id}/bookmark`, {
+      method: 'POST', headers: {'Content-Type': 'application/json'},
+      body: JSON.stringify({note}),
+    });
+    showToast(r.ok ? '已记录书签' : '记录失败');
+  } else if (action === 'check-now') {
+    btn.disabled = true;
+    const r = await fetch(`/api/watchers/${id}/check-now`, {method: 'POST'});
+    showToast(r.ok ? '已触发检查' : '触发失败');
+    setTimeout(() => { btn.disabled = false; }, 1000);
+  } else if (action === 'delete-watcher') {
+    if (!confirm('确认删除这个监听？正在进行的录制不会受影响。')) return;
+    const r = await fetch(`/api/watchers/${id}`, {method: 'DELETE'});
+    showToast(r.ok ? '已删除' : '删除失败');
+  }
+});
+
+// 每 10 秒刷新一次相对时间显示
+setInterval(() => {
+  for (const w of watchers.values()) renderWatcher(w);
+}, 10000);
+</script>
+</body>
+</html>
