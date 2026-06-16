@@ -1,8 +1,20 @@
 # record-live
 
+[![skills.sh](https://skills.sh/b/zkassing/record-live)](https://skills.sh/zkassing/record-live)
+
 多平台直播间录制 Claude Code skill。给一条直播间链接，自动拉流、转 MP4、本地 dashboard 实时显示进度。
 
 > 这是 Claude Code 的 [agent skill](https://docs.anthropic.com/en/docs/claude-code/agent-skills)。`SKILL.md` 是给 AI 看的指令；`README.md` 这份是给人看的。
+
+## 一键安装
+
+```bash
+# 安装到 Claude Code（global，覆盖所有项目）
+npx skills add zkassing/record-live -a claude-code -g
+
+# 或者本地手动 clone
+git clone git@github.com:zkassing/record-live.git ~/.claude/skills/record-live
+```
 
 ## 支持的平台
 
